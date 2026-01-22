@@ -467,6 +467,37 @@
       if (Array.isArray(WARNVERLAY_CFG.alerts) && WARNVERLAY_CFG.alerts.length) {
         selectedCategories = WARNVERLAY_CFG.alerts.map(a => String(a).trim()).filter(Boolean);
       }
+
+      // Alert count bar toggles (optional)
+      if (WARNVERLAY_CFG.countBars && typeof alertCountBarToggles !== "undefined") {
+        try {
+          Object.keys(alertCountBarToggles).forEach(k => {
+            if (Object.prototype.hasOwnProperty.call(WARNVERLAY_CFG.countBars, k)) {
+              alertCountBarToggles[k] = !!WARNVERLAY_CFG.countBars[k];
+            }
+          });
+          // If the page defines a helper to apply countbar visibility, call it after DOM is ready
+          document.addEventListener("DOMContentLoaded", () => {
+            try { if (typeof updateCountBarVisibility === "function") updateCountBarVisibility(); } catch(e){}
+            // Also sync icons in the menu if present
+            try {
+              document.querySelectorAll(".alert-toggle[data-countbar]").forEach(el => {
+                const key = el.getAttribute("data-countbar");
+                const enabled = !!alertCountBarToggles[key];
+                el.classList.toggle("disabled", !enabled);
+                const ic = el.querySelector(".toggle-icon");
+                if (ic) {
+                  ic.textContent = enabled ? "ON" : "OFF";
+                  ic.classList.toggle("disabled", !enabled);
+                }
+              });
+            } catch(e){}
+          });
+        } catch (e) {
+          console.warn("Warnverlay: failed to apply countBars cfg", e);
+        }
+      }
+
       // Hide menu in OBS if desired
       if (WARNVERLAY_CFG.hideMenu) {
         document.addEventListener("DOMContentLoaded", () => {

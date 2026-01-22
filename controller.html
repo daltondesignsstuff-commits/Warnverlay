@@ -1,142 +1,536 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Warnverlay Controller</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Warnverlay Builder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet"/>
   <style>
-    :root { color-scheme: dark; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 16px; max-width: 980px; margin: 0 auto; background:#0b0b0b; color:#f3f3f3; }
-    h1 { margin: 0 0 6px; }
-    .muted { opacity:.8; font-size: 13px; }
-    label { display:block; margin-top: 12px; font-weight: 650; }
-    input, select, textarea, button { width: 100%; padding: 10px 12px; margin-top: 6px; font-size: 14px; border-radius: 10px; border: 1px solid #2a2a2a; background:#141414; color:#f3f3f3; }
-    textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    button { cursor:pointer; border: 1px solid #3a3a3a; background:#1b1b1b; }
-    button:hover { background:#222; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .out { margin-top: 16px; padding: 12px; border: 1px solid #2a2a2a; border-radius: 12px; background:#101010; }
-    code { word-break: break-all; }
-    .btnrow { margin-top:10px; display:flex; gap:10px; flex-wrap: wrap; }
-    .btnrow button { width:auto; padding: 10px 14px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius: 999px; background:#1f1f1f; border:1px solid #2a2a2a; font-size:12px; opacity:.9; }
+    :root{
+      --sidebar-w: 320px;
+      --bg1: rgba(80, 10, 10, 0.95);
+      --bg2: rgba(120, 20, 20, 0.95);
+      --border: rgba(255, 50, 50, 0.55);
+      --text: #fff;
+    }
+    *{ box-sizing:border-box; }
+    html, body { height:100%; margin:0; }
+    body{
+      background:#0b0b0b;
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      overflow:hidden;
+    }
+
+    @keyframes menu-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(255, 50, 50, 0.6), 0 0 30px rgba(255, 50, 50, 0.3), inset 0 0 20px rgba(255, 50, 50, 0.1); }
+      50% { box-shadow: 0 0 25px rgba(255, 50, 50, 0.9), 0 0 40px rgba(255, 50, 50, 0.5), inset 0 0 30px rgba(255, 50, 50, 0.2); }
+    }
+    @keyframes light-sweep {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    .layout{ height:100%; display:flex; }
+
+    /* Sidebar */
+    #sidebar{
+      width: var(--sidebar-w);
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      border-right: 1.5px solid var(--border);
+      padding: 14px 14px 10px;
+      position: relative;
+      overflow:hidden;
+      animation: menu-glow 3s ease-in-out infinite;
+    }
+    #sidebar::before{
+      content:"";
+      position:absolute; top:0; left:-100%;
+      width:100%; height:100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      animation: light-sweep 3s infinite;
+      pointer-events:none;
+    }
+    #sidebar-inner{
+      position:relative;
+      height:100%;
+      overflow:auto;
+      padding-right: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 50, 50, 0.8) rgba(80, 10, 10, 0.5);
+    }
+    #sidebar-inner::-webkit-scrollbar{ width: 12px; }
+    #sidebar-inner::-webkit-scrollbar-track{ background: rgba(80,10,10,0.5); border-radius: 6px; }
+    #sidebar-inner::-webkit-scrollbar-thumb{
+      background: linear-gradient(180deg, rgba(255, 100, 100, 0.8), rgba(255, 50, 50, 0.8));
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(255, 50, 50, 0.6), inset 0 0 5px rgba(255, 100, 100, 0.4);
+      border: 1px solid rgba(255, 50, 50, 0.6);
+    }
+
+    .brand{
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 0.5px;
+      color: rgba(255, 140, 140, 1);
+      text-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
+      margin: 2px 0 10px;
+    }
+    .hint{ font-size: 12px; opacity: .85; margin: 0 0 12px; line-height: 1.35; }
+
+    .menu-group { margin-bottom: 16px; position: relative; z-index: 1; }
+    .menu-group h3{
+      margin: 10px 0 8px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.05rem;
+      border-bottom: 2px solid rgba(255, 50, 50, 0.6);
+      padding-bottom: 5px;
+      color: rgba(255, 100, 100, 1);
+      text-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
+    }
+
+    .row{ display:flex; gap:8px; align-items:center; }
+    .row > *{ flex:1; }
+
+    select, input, button{
+      width:100%;
+      border-radius: 8px;
+      border: 1.5px solid rgba(255, 50, 50, 0.45);
+      background: rgba(0,0,0,0.25);
+      color: #fff;
+      padding: 10px 10px;
+      outline:none;
+    }
+
+    /* Bring over menu toggle styles from the overlay */
+    .alert-toggle {
+      display: flex; align-items: center;
+      cursor: pointer;
+      border: 1.5px solid rgba(255, 50, 50, 0.5);
+      padding: 8px 12px; margin-bottom: 6px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(150, 50, 50, 0.3), rgba(130, 30, 30, 0.3));
+      color: white;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.95rem;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      user-select:none;
+    }
+    .alert-toggle:hover {
+      border-color: rgba(255, 90, 90, 0.85);
+      box-shadow: 0 0 15px rgba(255, 50, 50, 0.35);
+      transform: translateY(-1px);
+    }
+    .toggle-icon {
+      width: 52px; height: 26px; border-radius: 7px;
+      background: linear-gradient(135deg, #00ff00, #00cc00);
+      color: white;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-right: 10px; font-size: 0.75rem;
+      font-weight: bold;
+      box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+      transition: all 0.25s ease;
+    }
+    .toggle-icon.disabled {
+      background: linear-gradient(135deg, #ff3333, #cc0000);
+      box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+    }
+    .alert-toggle.disabled { opacity: 0.85; }
+
+    .outbox {
+      margin-top: 10px;
+      border-top: 2px solid rgba(255, 50, 50, 0.45);
+      padding-top: 12px;
+    }
+    .outlabel {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.05rem;
+      margin: 0 0 6px;
+      color: rgba(255, 120, 120, 1);
+    }
+    .outurl {
+      font-size: 12px;
+      line-height: 1.3;
+      word-break: break-all;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255, 50, 50, 0.35);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 56px;
+    }
+    .btnrow{ display:flex; gap:8px; margin-top:8px; }
+    .btn{
+      cursor:pointer;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.6px;
+      background: linear-gradient(135deg, rgba(255, 60, 60, 0.35), rgba(255, 30, 30, 0.25));
+    }
+    .btn:hover{
+      border-color: rgba(255, 120, 120, 0.9);
+      box-shadow: 0 0 18px rgba(255, 50, 50, 0.45);
+    }
+
+    /* Preview */
+    #preview{ flex:1; min-width:0; background:#000; position:relative; }
+    #preview iframe{ width:100%; height:100%; border:0; background:#000; }
+    #preview-top{
+      position:absolute; top:10px; right:10px; z-index:5;
+      display:flex; gap:8px; align-items:center;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255, 50, 50, 0.35);
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 0.5px;
+    }
+    #preview-top input{ width: 90px; padding: 8px 8px; }
+
+    /* State list grid (keeps it compact) */
+    #states-list {
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    #states-list .alert-toggle {
+      margin: 0;
+      padding: 8px 8px;
+      justify-content:center;
+    }
+    #states-list .toggle-icon { margin-right: 6px; width: 44px; }
   </style>
 </head>
 <body>
-  <h1>Warnverlay Controller</h1>
-  <div class="muted">
-    Configure your overlay here, then copy the generated URL into OBS as a Browser Source.
-    <span class="pill">No OBS clicking</span>
-  </div>
+  <div class="layout">
+    <aside id="sidebar">
+      <div id="sidebar-inner">
+        <div class="brand">Warnverlay Builder</div>
+        <p class="hint">
+          Settings on the left, preview on the right.
+          Copy the <b>Output URL</b> into OBS as a Browser Source (no clicking in OBS).
+        </p>
 
-  <div class="row" style="margin-top:14px;">
-    <div>
-      <label>Overlay Page</label>
-      <select id="page">
-        <option value="1080p.html" selected>1080p Dashboard</option>
-        <option value="720p.html">720p Dashboard</option>
-        <option value="1440p.html">1440p Dashboard</option>
-        <option value="2160p.html">2160p (4K) Dashboard</option>
-        <option value="warnings.html">Pop-Up Alerts (warnings.html)</option>
-        <option value="usalertmap.html">US Alert Map</option>
-        <option value="canadaalerts1080p.html">Canada Alerts 1080p</option>
-      </select>
+        <div class="menu-group">
+          <h3>Overlay Page</h3>
+          <div class="row">
+            <select id="page">
+              <option value="720p.html">720p</option>
+              <option value="1080p.html" selected>1080p</option>
+              <option value="1440p.html">1440p</option>
+              <option value="2160p.html">2160p (4K)</option>
+            </select>
+            <input id="refreshSec" type="number" min="5" value="20" title="Refresh interval (seconds)"/>
+          </div>
+          <p class="hint" style="margin-top:8px;">
+            Refresh seconds controls how often the overlay polls for updates.
+          </p>
+        </div>
+
+        <!-- Tornado Alerts -->
+    <div class="menu-group">
+      <h3>Tornado Alerts</h3>
+      <div class="alert-toggle" data-type="Tornado Warning">
+        <span class="toggle-icon">#</span><span>Tornado Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Observed Tornado Warning">
+        <span class="toggle-icon">#</span><span>Observed Tornado Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="PDS Tornado Warning">
+        <span class="toggle-icon">#</span><span>PDS Tornado Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Tornado Emergency">
+        <span class="toggle-icon">#</span><span>Tornado Emergency</span>
+      </div>
+      <div class="alert-toggle" data-type="Tornado Watch">
+        <span class="toggle-icon">#</span><span>Tornado Watch</span>
+      </div>
     </div>
-
-    <div>
-      <label>Cycle / Refresh Interval (seconds)</label>
-      <input id="refreshSec" type="number" min="5" value="20" />
-      <div class="muted">Controls how often the overlay re-fetches and cycles alerts.</div>
+    <!-- Flash Flood Alerts -->
+    <div class="menu-group">
+      <h3>Flash Flood Alerts</h3>
+      <div class="alert-toggle" data-type="Flash Flood Warning">
+        <span class="toggle-icon">#</span><span>Flash Flood Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Considerable Flash Flood Warning">
+        <span class="toggle-icon">#</span><span>Considerable Flash Flood Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Flash Flood Emergency">
+        <span class="toggle-icon">#</span><span>Flash Flood Emergency</span>
+      </div>
+      <div class="alert-toggle" data-type="Flash Flood Watch">
+        <span class="toggle-icon">#</span><span>Flash Flood Watch</span>
+      </div>
+      <div class="alert-toggle" data-type="Flood Watch">
+        <span class="toggle-icon">#</span><span>Flood Watch</span>
+      </div>
     </div>
-  </div>
-
-  <label>States (comma-separated) — example: IL,IN,KY</label>
-  <input id="states" placeholder="IL,IN,KY" />
-  <div class="muted">If blank: all states enabled. If set: only these states enabled.</div>
-
-  <label>Alert Types (comma-separated) — must match menu labels</label>
-  <textarea id="alerts" rows="4" placeholder="Tornado Warning, Severe Thunderstorm Warning, Flash Flood Warning"></textarea>
-  <div class="muted">
-    If blank: behaves like default (all base alerts). If set: only these types are enabled.
-  </div>
-
-  <label style="margin-top:14px;">
-    <input id="hideMenu" type="checkbox" style="width:auto; margin-right:8px; transform: translateY(1px);" checked />
-    Hide menu icon + drawer (recommended for OBS)
-  </label>
-
-  <button id="build" style="margin-top:16px;">Generate OBS URL</button>
-
-  <div class="out">
-    <div style="font-weight:750; margin-bottom: 8px;">Output URL</div>
-    <code id="outUrl"></code>
-    <div class="btnrow">
-      <button id="copy" type="button">Copy</button>
-      <button id="open" type="button">Open</button>
+    <!-- Severe Thunderstorm Alerts -->
+    <div class="menu-group">
+      <h3>Severe Thunderstorm Alerts</h3>
+      <div class="alert-toggle" data-type="Severe Thunderstorm Warning">
+        <span class="toggle-icon">#</span><span>Severe Thunderstorm Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Considerable Severe Thunderstorm Warning">
+        <span class="toggle-icon">#</span><span>Considerable Severe TSW</span>
+      </div>
+      <div class="alert-toggle" data-type="Destructive Severe Thunderstorm Warning">
+        <span class="toggle-icon">#</span><span>Destructive Severe TSW</span>
+      </div>
+      <div class="alert-toggle" data-type="Severe Thunderstorm Watch">
+        <span class="toggle-icon">#</span><span>Severe Thunderstorm Watch</span>
+      </div>
     </div>
+    <!-- Winter Alerts -->
+    <div class="menu-group">
+      <h3>Winter Alerts</h3>
+      <div class="alert-toggle" data-type="Winter Storm Warning">
+        <span class="toggle-icon">#</span><span>Winter Storm Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Blizzard Warning">
+        <span class="toggle-icon">#</span><span>Blizzard Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Winter Storm Watch">
+        <span class="toggle-icon">#</span><span>Winter Storm Watch</span>
+      </div>
+    </div>
+    <!-- Hurricane Alerts -->
+    <div class="menu-group">
+      <h3>Hurricane Alerts</h3>
+      <div class="alert-toggle" data-type="Hurricane Warning">
+        <span class="toggle-icon">#</span><span>Hurricane Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Hurricane Watch">
+        <span class="toggle-icon">#</span><span>Hurricane Watch</span>
+      </div>
+    </div>
+    <!-- Other Alerts -->
+    <div class="menu-group">
+      <h3>Other Alerts</h3>
+      <div class="alert-toggle" data-type="Snow Squall Warning">
+        <span class="toggle-icon">#</span><span>Snow Squall Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Tropical Storm Warning">
+        <span class="toggle-icon">#</span><span>Tropical Storm Warning</span>
+      </div>
+      <div class="alert-toggle" data-type="Tropical Storm Watch">
+        <span class="toggle-icon">#</span><span>Tropical Storm Watch</span>
+      </div>
+    </div>
+    <!-- Additional & Special Alerts -->
+    <div class="menu-group">
+      <h3>Additional & Special Alerts</h3>
+      <div class="alert-toggle" data-type="Special Weather Statement">
+        <span class="toggle-icon">#</span><span>Special Weather Statement</span>
+      </div>
+      <div class="alert-toggle" data-type="High Wind Warning">
+        <span class="toggle-icon">#</span><span>High Wind Warning</span>
+      </div>
+    </div>
+    <!-- Alert Count Bar Toggles -->
+    <div class="menu-group" id="alert-count-toggle-group">
+      <h3>Alert Count Bar</h3>
+      <div class="alert-toggle" data-countbar="tornado">
+        <span class="toggle-icon">ON</span><span>Tornado Warnings</span>
+      </div>
+      <div class="alert-toggle" data-countbar="severe-thunderstorm">
+        <span class="toggle-icon">ON</span><span>Severe Thunderstorm Warnings</span>
+      </div>
+      <div class="alert-toggle" data-countbar="flood-alert">
+        <span class="toggle-icon">ON</span><span>Flood Alerts</span>
+      </div>
+      <div class="alert-toggle" data-countbar="winter-weather">
+        <span class="toggle-icon">ON</span><span>Winter Weather Alerts</span>
+      </div>
+    </div>
+    <!-- State Filters -->
+
+        <div class="menu-group" id="states-group">
+          <h3>State Filters</h3>
+          <div id="states-list"></div>
+          <div class="btnrow" style="margin-top:10px;">
+            <button class="btn" id="states-all" type="button">All</button>
+            <button class="btn" id="states-none" type="button">None</button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>OBS Behavior</h3>
+          <div class="alert-toggle" id="hideMenuToggle" data-setting="hideMenu">
+            <span class="toggle-icon">ON</span><span>Hide in-page menu (recommended)</span>
+          </div>
+        </div>
+
+        <div class="outbox">
+          <div class="outlabel">Output URL</div>
+          <div class="outurl" id="outUrl"></div>
+          <div class="btnrow">
+            <button class="btn" id="copyBtn" type="button">Copy</button>
+            <button class="btn" id="openBtn" type="button">Open</button>
+          </div>
+          <p class="hint" style="margin-top:10px;">
+            Paste the URL above into OBS → Browser Source.
+            Preview uses the same URL.
+          </p>
+        </div>
+
+      </div>
+    </aside>
+
+    <main id="preview">
+      <div id="preview-top">
+        <span>Preview Zoom</span>
+        <input id="zoom" type="number" min="30" max="160" value="100"/>
+        <span>%</span>
+      </div>
+      <iframe id="frame" title="Warnverlay Preview" src=""></iframe>
+    </main>
   </div>
 
-<script>
-  function b64EncodeUnicode(str) {
-    return btoa(unescape(encodeURIComponent(str)));
-  }
+  <script>
+    function b64EncodeUnicode(str){ return btoa(unescape(encodeURIComponent(str))); }
 
-  function normalizeCsv(str) {
-    return (str || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
+    function setToggleState(el, enabled){
+      el.classList.toggle('disabled', !enabled);
+      const icon = el.querySelector('.toggle-icon');
+      if(icon){
+        icon.textContent = enabled ? 'ON' : 'OFF';
+        icon.classList.toggle('disabled', !enabled);
+      }
+    }
 
-  function buildCfg() {
-    const cfg = {
-      v: 1,
-      refreshSec: Number(document.getElementById("refreshSec").value || 20),
-      hideMenu: !!document.getElementById("hideMenu").checked,
-      states: normalizeCsv(document.getElementById("states").value).map(s => s.toUpperCase()),
-      alerts: normalizeCsv(document.getElementById("alerts").value),
-    };
-    // remove empty arrays to keep URL shorter
-    if (!cfg.states.length) delete cfg.states;
-    if (!cfg.alerts.length) delete cfg.alerts;
-    return cfg;
-  }
+    function buildOutputUrl(){
+      const page = document.getElementById('page').value;
+      const refreshSec = Math.max(5, Number(document.getElementById('refreshSec').value || 20));
 
-  function buildUrl() {
-    const page = document.getElementById("page").value;
-    const cfg = buildCfg();
-    const encoded = b64EncodeUnicode(JSON.stringify(cfg));
+      const alerts = Array.from(document.querySelectorAll('.alert-toggle[data-type]'))
+        .filter(el => !el.classList.contains('disabled'))
+        .map(el => el.getAttribute('data-type'));
 
-    const url = new URL(window.location.href);
-    url.pathname = url.pathname.replace(/\/[^\/]*$/, "/" + page);
-    url.hash = "cfg=" + encoded;
-    return url.toString();
-  }
+      const states = Array.from(document.querySelectorAll('.state-toggle'))
+        .filter(el => !el.classList.contains('disabled'))
+        .map(el => el.getAttribute('data-state'));
 
-  const out = document.getElementById("outUrl");
+      const countBars = {};
+      document.querySelectorAll('.alert-toggle[data-countbar]').forEach(el => {
+        const key = el.getAttribute('data-countbar');
+        countBars[key] = !el.classList.contains('disabled');
+      });
 
-  function render() { out.textContent = buildUrl(); }
+      const hideMenu = !document.getElementById('hideMenuToggle').classList.contains('disabled');
 
-  document.getElementById("build").addEventListener("click", render);
+      const cfg = {
+        v: 1,
+        refreshSec,
+        alerts,
+        states,
+        hideMenu,
+        countBars
+      };
 
-  document.getElementById("copy").addEventListener("click", async () => {
-    render();
-    await navigator.clipboard.writeText(out.textContent);
-  });
+      const encoded = b64EncodeUnicode(JSON.stringify(cfg));
+      const url = new URL(window.location.href);
+      url.pathname = url.pathname.replace(/\/[^\/]*$/, '/' + page);
+      url.hash = 'cfg=' + encoded;
+      return url.toString();
+    }
 
-  document.getElementById("open").addEventListener("click", () => {
-    render();
-    window.open(out.textContent, "_blank");
-  });
+    function syncOutput(){
+      const url = buildOutputUrl();
+      document.getElementById('outUrl').textContent = url;
+      document.getElementById('frame').src = url;
+    }
 
-  // live update
-  ["page","refreshSec","states","alerts","hideMenu"].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener("input", render);
-    el.addEventListener("change", render);
-  });
+    // Toggle click handling
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('.alert-toggle');
+      if(!t) return;
 
-  render();
-</script>
+      // state toggles handled separately
+      if(t.classList.contains('state-toggle')) return;
+
+      if(t.id === 'hideMenuToggle' || t.hasAttribute('data-type') || t.hasAttribute('data-countbar')){
+        setToggleState(t, t.classList.contains('disabled')); // invert
+        syncOutput();
+      }
+    });
+
+    // States list
+    const STATES = [
+      ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],["CO","Colorado"],
+      ["CT","Connecticut"],["DE","Delaware"],["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],["ID","Idaho"],
+      ["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],
+      ["ME","Maine"],["MD","Maryland"],["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],
+      ["MO","Missouri"],["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],
+      ["NM","New Mexico"],["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],["OK","Oklahoma"],
+      ["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],["SD","South Dakota"],["TN","Tennessee"],
+      ["TX","Texas"],["UT","Utah"],["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],["WI","Wisconsin"],
+      ["WY","Wyoming"],["DC","District of Columbia"]
+    ];
+
+    function renderStates(){
+      const wrap = document.getElementById('states-list');
+      wrap.innerHTML = '';
+      STATES.forEach(([abbr,name]) => {
+        const div = document.createElement('div');
+        div.className = 'alert-toggle state-toggle';
+        div.setAttribute('data-state', abbr);
+        div.title = name;
+        div.innerHTML = '<span class="toggle-icon">ON</span><span>' + abbr + '</span>';
+        wrap.appendChild(div);
+      });
+    }
+
+    document.getElementById('states-list').addEventListener('click', (e) => {
+      const st = e.target.closest('.state-toggle');
+      if(!st) return;
+      setToggleState(st, st.classList.contains('disabled')); // invert
+      syncOutput();
+    });
+
+    document.getElementById('states-all').addEventListener('click', () => {
+      document.querySelectorAll('.state-toggle').forEach(el => setToggleState(el, true));
+      syncOutput();
+    });
+    document.getElementById('states-none').addEventListener('click', () => {
+      document.querySelectorAll('.state-toggle').forEach(el => setToggleState(el, false));
+      syncOutput();
+    });
+
+    document.getElementById('page').addEventListener('change', syncOutput);
+    document.getElementById('refreshSec').addEventListener('input', syncOutput);
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const url = document.getElementById('outUrl').textContent || buildOutputUrl();
+      await navigator.clipboard.writeText(url);
+    });
+    document.getElementById('openBtn').addEventListener('click', () => {
+      const url = document.getElementById('outUrl').textContent || buildOutputUrl();
+      window.open(url, '_blank');
+    });
+
+    document.getElementById('zoom').addEventListener('input', () => {
+      const z = Math.max(30, Math.min(160, Number(document.getElementById('zoom').value || 100)));
+      const frame = document.getElementById('frame');
+      frame.style.transformOrigin = '0 0';
+      frame.style.transform = 'scale(' + (z/100) + ')';
+      frame.style.width = (100/(z/100)) + '%';
+      frame.style.height = (100/(z/100)) + '%';
+    });
+
+    // init
+    renderStates();
+
+    // normalize all toggle icons to ON/OFF look
+    document.querySelectorAll('.alert-toggle').forEach(el => {
+      setToggleState(el, !el.classList.contains('disabled'));
+    });
+
+    // default hideMenu ON
+    setToggleState(document.getElementById('hideMenuToggle'), true);
+
+    syncOutput();
+    document.getElementById('zoom').dispatchEvent(new Event('input'));
+  </script>
 </body>
 </html>
