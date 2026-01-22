@@ -95,6 +95,31 @@
         background: linear-gradient(180deg, rgba(255, 150, 150, 1), rgba(255, 80, 80, 1));
         box-shadow: 0 0 20px rgba(255, 50, 50, 0.9), inset 0 0 8px rgba(255, 150, 150, 0.6);
       }
+
+    /* Layout tweaks for persistent sidebar on resolution pages */
+    #menu-icon {
+      display: none !important;
+    }
+    #alert-menu {
+      display: block !important;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 320px;
+      height: 100vh;
+      overflow-y: auto;
+      padding-top: 15px;
+    }
+    #alert-count-bar,
+    #event-text,
+    #area-text,
+    #expire-date-container {
+      margin-left: 330px;
+      width: calc(100% - 330px);
+    }
+    body {
+      padding-left: 330px;
+    }
       .menu-group { margin-bottom: 20px; position: relative; z-index: 1; }
       .menu-group h3 {
         margin: 10px 0 5px;
@@ -261,71 +286,7 @@
         font-size: 1rem; font-weight: bold;
         white-space: nowrap;
       }
-    
-
-    /* === Builder sidebar mode (no OBS interaction needed) === */
-    :root { --wv-sidebar-w: 320px; }
-    body.wv-builder #menu-icon { display: none !important; }
-    body.wv-builder #alert-menu {
-      display: block !important;
-      top: 0 !important; left: 0 !important;
-      width: var(--wv-sidebar-w) !important;
-      height: 100vh !important;
-      overflow-y: auto !important;
-      border-radius: 0 !important;
-      padding-bottom: 140px !important; /* room for URL box */
-    }
-    body.wv-builder #alert-count-bar { left: calc(50% + (var(--wv-sidebar-w) / 2)) !important; }
-    body.wv-builder #event-text,
-    body.wv-builder #area-text,
-    body.wv-builder #expire-date-container { transform: translateX(calc(var(--wv-sidebar-w) / 2)) !important; }
-
-    /* OBS mode: hide sidebar/menu icon */
-    body.wv-obs #menu-icon,
-    body.wv-obs #alert-menu,
-    body.wv-obs #output-url-box { display: none !important; }
-
-    /* Output URL box */
-    #output-url-box {
-      position: fixed;
-      left: 0;
-      bottom: 0;
-      width: var(--wv-sidebar-w);
-      box-sizing: border-box;
-      padding: 12px 12px 14px 12px;
-      background: linear-gradient(135deg, rgba(60, 8, 8, 0.97), rgba(120, 20, 20, 0.97));
-      border-top: 1px solid rgba(255,255,255,0.12);
-      z-index: 400;
-      font-family: Arial, sans-serif;
-    }
-    #output-url-box .label { font-weight: 700; font-size: 13px; opacity: 0.9; margin-bottom: 6px; }
-    #output-url-box code {
-      display: block;
-      font-size: 11px;
-      line-height: 1.3;
-      padding: 8px;
-      background: rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: #fff;
-      word-break: break-all;
-      user-select: text;
-      margin-bottom: 8px;
-    }
-    #output-url-box .btnrow { display: flex; gap: 8px; }
-    #output-url-box button {
-      flex: 1;
-      cursor: pointer;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(0,0,0,0.25);
-      color: #fff;
-      font-weight: 700;
-    }
-    #output-url-box button:hover { background: rgba(0,0,0,0.35); }
-    
-</style>
+    </style>
   </head>
   <body>
     <div id="menu-icon">
@@ -449,6 +410,12 @@
         </div>
       </div>
       <div class="menu-group" id="state-group"><h3>State Filters</h3></div>
+      <!-- Output URL section -->
+      <div class="menu-group" id="output-url-group" style="margin-top:20px;">
+        <h3>OBS Output URL</h3>
+        <input id="output-url" type="text" readonly style="width:100%; padding:6px; font-size:0.8rem; margin-bottom:8px;" />
+        <button id="copy-url-btn" style="width:100%; padding:6px; font-size:0.8rem;">Copy URL</button>
+      </div>
     </div>
 
     <div id="alert-count-bar">
@@ -480,15 +447,6 @@
       let currentAlertIndex = 0;
       let currentAreaIndex = 0;
       let selectedBackground = "";
-
-
-    // refresh interval control (seconds)
-    let refreshSeconds = 5;
-    let refreshTimer = null;
-    function startRefreshLoop() {
-      if (refreshTimer) clearInterval(refreshTimer);
-      refreshTimer = setInterval(updateBackgroundCycle, refreshSeconds * 1000);
-    }
       const stateToggles = { AL:false, AK:false, AZ:false, AR:false, CA:false,
         CO:false, CT:false, DE:false, FL:false, GA:false,
         HI:false, ID:false, IL:true, IN:false, IA:false,
@@ -758,6 +716,96 @@
         document.querySelector(".flood-alert").textContent = `FLOOD ALERTS: ${cnt.flood}`;
         document.querySelector(".winter-weather").textContent = `WINTER WEATHER ALERTS: ${cnt.winterWeather}`;
         updateAlertCountBarVisibility();
+
+    /* === Output URL builder === */
+    function b64EncodeUnicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function buildConfig() {
+      return {
+        v: 1,
+        states: Object.keys(stateToggles).filter(s => stateToggles[s]),
+        alerts: selectedCategories.slice(),
+        countBars: alertCountBarToggles
+      };
+    }
+
+    function updateOutputUrl() {
+      const cfg = b64EncodeUnicode(JSON.stringify(buildConfig()));
+      const url = `${window.location.origin}${window.location.pathname}?cfg=${cfg}`;
+      const input = document.getElementById('output-url');
+      if (input) input.value = url;
+    }
+    // initial output url
+    updateOutputUrl();
+    // update output when any alert toggle is clicked
+    document.querySelectorAll('.alert-toggle').forEach(el => {
+      el.addEventListener('click', () => {
+        updateOutputUrl();
+      });
+    });
+    const copyBtn = document.getElementById('copy-url-btn');
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      const input = document.getElementById('output-url');
+      if (!input) return;
+      input.select();
+      document.execCommand('copy');
+    });
+    // Parse cfg from URL on load and apply settings
+    (function () {
+      const urlObj = new URL(window.location.href);
+      let cfgRaw = null;
+      if (urlObj.searchParams.has('cfg')) {
+        cfgRaw = urlObj.searchParams.get('cfg');
+      } else if (urlObj.hash.startsWith('#cfg=')) {
+        cfgRaw = urlObj.hash.substring(5);
+      }
+      if (cfgRaw) {
+        try {
+          const decoded = decodeURIComponent(escape(atob(cfgRaw)));
+          const cfg = JSON.parse(decoded);
+          if (Array.isArray(cfg.states)) {
+            Object.keys(stateToggles).forEach(s => {
+              stateToggles[s] = cfg.states.includes(s);
+            });
+          }
+          if (Array.isArray(cfg.alerts)) {
+            selectedCategories = cfg.alerts.slice();
+          }
+          if (cfg.countBars && typeof cfg.countBars === 'object') {
+            Object.keys(alertCountBarToggles).forEach(key => {
+              if (cfg.countBars.hasOwnProperty(key)) {
+                alertCountBarToggles[key] = !!cfg.countBars[key];
+              }
+            });
+          }
+          document.querySelectorAll('.alert-toggle[data-type]').forEach(el => {
+            const t = el.dataset.type;
+            const selected = selectedCategories.includes(t);
+            el.classList.toggle('selected', selected);
+          });
+          document.querySelectorAll('#state-group .alert-toggle').forEach(el => {
+            const s = el.dataset.type;
+            const icon = el.querySelector('.toggle-icon');
+            const on = stateToggles[s];
+            icon.textContent = on ? 'ON' : 'OFF';
+            icon.classList.toggle('disabled', !on);
+          });
+          document.querySelectorAll('.alert-toggle[data-countbar]').forEach(el => {
+            const key = el.getAttribute('data-countbar');
+            const val = alertCountBarToggles[key];
+            const ic = el.querySelector('.toggle-icon');
+            ic.textContent = val ? 'ON' : 'OFF';
+            ic.classList.toggle('disabled', !val);
+          });
+          updateAlertCountBarVisibility();
+          updateOutputUrl();
+        } catch (e) {
+          console.warn('Invalid cfg parameter', e);
+        }
+      }
+    })();
       }
       function determineBackground(alerts) {
         if (!alerts.length) return "No Weather Alerts.png";
@@ -940,103 +988,7 @@
           updateBackgroundCycle();
         });
       });
-      
-    // === URL-config helpers (sidebar builder) ===
-    function b64EncodeUnicode(str) {
-      return btoa(unescape(encodeURIComponent(str)));
-    }
-    function b64DecodeUnicode(str) {
-      try { return decodeURIComponent(escape(atob(str))); } catch(e) { return null; }
-    }
-    function readCfgFromHash() {
-      const h = (location.hash || '').replace(/^#/, '');
-      const params = new URLSearchParams(h);
-      const raw = params.get('cfg');
-      if (!raw) return null;
-      const decoded = b64DecodeUnicode(raw);
-      if (!decoded) return null;
-      try { return JSON.parse(decoded); } catch(e) { return null; }
-    }
-    function applyCfg(cfg) {
-      if (!cfg || typeof cfg !== 'object') return;
-
-      if (cfg.refreshSec) {
-        const v = Number(cfg.refreshSec);
-        if (!Number.isNaN(v) && v >= 5) refreshSeconds = v;
-        startRefreshLoop();
-      }
-
-      if (Array.isArray(cfg.states)) {
-        Object.keys(stateToggles).forEach(s => stateToggles[s] = false);
-        cfg.states.forEach(s => {
-          const key = String(s||'').toUpperCase().trim();
-          if (key && key in stateToggles) stateToggles[key] = true;
-        });
-      }
-
-      if (Array.isArray(cfg.alerts)) {
-        selectedCategories = cfg.alerts.slice();
-        currentAlertIndex = 0;
-        currentAreaIndex  = 0;
-      }
-
-      if (cfg.countBars && typeof alertCountBarToggles === 'object') {
-        Object.keys(alertCountBarToggles).forEach(k => {
-          if (k in cfg.countBars) alertCountBarToggles[k] = !!cfg.countBars[k];
-        });
-      }
-    }
-
-    function getCountBarsSnapshot() {
-      if (typeof alertCountBarToggles !== 'object') return {};
-      return Object.assign({}, alertCountBarToggles);
-    }
-
-    function buildObsUrl() {
-      const statesOn = Object.keys(stateToggles).filter(s => stateToggles[s]);
-      const cfg = {
-        v: 1,
-        refreshSec: refreshSeconds,
-        states: statesOn,
-        alerts: selectedCategories.slice(),
-        countBars: getCountBarsSnapshot(),
-      };
-      const u = new URL(location.href);
-      u.searchParams.set('mode', 'obs');
-      u.hash = 'cfg=' + b64EncodeUnicode(JSON.stringify(cfg));
-      return u.toString();
-    }
-
-    function updateObsUrlUI() {
-      const el = document.getElementById('obs-url');
-      if (!el) return;
-      el.textContent = buildObsUrl();
-    }
-
-    function wireObsUrlButtons() {
-      const copyBtn = document.getElementById('copy-obs-url');
-      const openBtn = document.getElementById('open-obs-url');
-      if (copyBtn) copyBtn.addEventListener('click', async () => {
-        const url = buildObsUrl();
-        updateObsUrlUI();
-        try { await navigator.clipboard.writeText(url); } catch(e) {}
-      });
-      if (openBtn) openBtn.addEventListener('click', () => {
-        const url = buildObsUrl();
-        updateObsUrlUI();
-        window.open(url, '_blank');
-      });
-    }
-
-    function setModeClasses() {
-      const u = new URL(location.href);
-      const mode = (u.searchParams.get('mode') || '').toLowerCase();
-      const isObs = mode === 'obs' || u.searchParams.get('obs') === '1';
-      document.body.classList.toggle('wv-obs', isObs);
-      document.body.classList.toggle('wv-builder', !isObs);
-    }
-
-document.getElementById("menu-icon").addEventListener("click", () => {
+      document.getElementById("menu-icon").addEventListener("click", () => {
         const m = document.getElementById("alert-menu");
         m.style.display = m.style.display === "block" ? "none" : "block";
       });
@@ -1060,11 +1012,8 @@ document.getElementById("menu-icon").addEventListener("click", () => {
         });
       }
       populateStateToggles();
-    setModeClasses();
-    applyCfg(readCfgFromHash());
-
-      startRefreshLoop();
-    updateBackgroundCycle();
+      setInterval(updateBackgroundCycle, 5000);
+      updateBackgroundCycle();
     </script>
   </body>
 </html>
