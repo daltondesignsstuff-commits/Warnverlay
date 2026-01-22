@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Warnverlay Controller</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 16px; max-width: 980px; margin: 0 auto; background:#0b0b0b; color:#f3f3f3; }
+    h1 { margin: 0 0 6px; }
+    .muted { opacity:.8; font-size: 13px; }
+    label { display:block; margin-top: 12px; font-weight: 650; }
+    input, select, textarea, button { width: 100%; padding: 10px 12px; margin-top: 6px; font-size: 14px; border-radius: 10px; border: 1px solid #2a2a2a; background:#141414; color:#f3f3f3; }
+    textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    button { cursor:pointer; border: 1px solid #3a3a3a; background:#1b1b1b; }
+    button:hover { background:#222; }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .out { margin-top: 16px; padding: 12px; border: 1px solid #2a2a2a; border-radius: 12px; background:#101010; }
+    code { word-break: break-all; }
+    .btnrow { margin-top:10px; display:flex; gap:10px; flex-wrap: wrap; }
+    .btnrow button { width:auto; padding: 10px 14px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius: 999px; background:#1f1f1f; border:1px solid #2a2a2a; font-size:12px; opacity:.9; }
+  </style>
+</head>
+<body>
+  <h1>Warnverlay Controller</h1>
+  <div class="muted">
+    Configure your overlay here, then copy the generated URL into OBS as a Browser Source.
+    <span class="pill">No OBS clicking</span>
+  </div>
+
+  <div class="row" style="margin-top:14px;">
+    <div>
+      <label>Overlay Page</label>
+      <select id="page">
+        <option value="1080p.html" selected>1080p Dashboard</option>
+        <option value="720p.html">720p Dashboard</option>
+        <option value="1440p.html">1440p Dashboard</option>
+        <option value="2160p.html">2160p (4K) Dashboard</option>
+        <option value="warnings.html">Pop-Up Alerts (warnings.html)</option>
+        <option value="usalertmap.html">US Alert Map</option>
+        <option value="canadaalerts1080p.html">Canada Alerts 1080p</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Cycle / Refresh Interval (seconds)</label>
+      <input id="refreshSec" type="number" min="5" value="20" />
+      <div class="muted">Controls how often the overlay re-fetches and cycles alerts.</div>
+    </div>
+  </div>
+
+  <label>States (comma-separated) — example: IL,IN,KY</label>
+  <input id="states" placeholder="IL,IN,KY" />
+  <div class="muted">If blank: all states enabled. If set: only these states enabled.</div>
+
+  <label>Alert Types (comma-separated) — must match menu labels</label>
+  <textarea id="alerts" rows="4" placeholder="Tornado Warning, Severe Thunderstorm Warning, Flash Flood Warning"></textarea>
+  <div class="muted">
+    If blank: behaves like default (all base alerts). If set: only these types are enabled.
+  </div>
+
+  <label style="margin-top:14px;">
+    <input id="hideMenu" type="checkbox" style="width:auto; margin-right:8px; transform: translateY(1px);" checked />
+    Hide menu icon + drawer (recommended for OBS)
+  </label>
+
+  <button id="build" style="margin-top:16px;">Generate OBS URL</button>
+
+  <div class="out">
+    <div style="font-weight:750; margin-bottom: 8px;">Output URL</div>
+    <code id="outUrl"></code>
+    <div class="btnrow">
+      <button id="copy" type="button">Copy</button>
+      <button id="open" type="button">Open</button>
+    </div>
+  </div>
+
+<script>
+  function b64EncodeUnicode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function normalizeCsv(str) {
+    return (str || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function buildCfg() {
+    const cfg = {
+      v: 1,
+      refreshSec: Number(document.getElementById("refreshSec").value || 20),
+      hideMenu: !!document.getElementById("hideMenu").checked,
+      states: normalizeCsv(document.getElementById("states").value).map(s => s.toUpperCase()),
+      alerts: normalizeCsv(document.getElementById("alerts").value),
+    };
+    // remove empty arrays to keep URL shorter
+    if (!cfg.states.length) delete cfg.states;
+    if (!cfg.alerts.length) delete cfg.alerts;
+    return cfg;
+  }
+
+  function buildUrl() {
+    const page = document.getElementById("page").value;
+    const cfg = buildCfg();
+    const encoded = b64EncodeUnicode(JSON.stringify(cfg));
+
+    const url = new URL(window.location.href);
+    url.pathname = url.pathname.replace(/\/[^\/]*$/, "/" + page);
+    url.hash = "cfg=" + encoded;
+    return url.toString();
+  }
+
+  const out = document.getElementById("outUrl");
+
+  function render() { out.textContent = buildUrl(); }
+
+  document.getElementById("build").addEventListener("click", render);
+
+  document.getElementById("copy").addEventListener("click", async () => {
+    render();
+    await navigator.clipboard.writeText(out.textContent);
+  });
+
+  document.getElementById("open").addEventListener("click", () => {
+    render();
+    window.open(out.textContent, "_blank");
+  });
+
+  // live update
+  ["page","refreshSec","states","alerts","hideMenu"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", render);
+    el.addEventListener("change", render);
+  });
+
+  render();
+</script>
+</body>
+</html>

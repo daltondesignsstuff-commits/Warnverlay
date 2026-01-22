@@ -429,6 +429,30 @@
   </div>
 
   <script>
+    // --- Warnverlay OBS controller config (URL-driven) ---
+    function parseWarnverlayCfg() {
+      // Supports: #cfg=<base64json> OR ?cfg=<base64json>
+      function b64DecodeUnicode(str) {
+        try { return decodeURIComponent(escape(atob(str))); } catch (e) { return null; }
+      }
+      const hash = (location.hash || "").replace(/^#/, "");
+      const hashParams = new URLSearchParams(hash);
+      const urlParams  = new URLSearchParams(location.search || "");
+      const raw = hashParams.get("cfg") || urlParams.get("cfg");
+      if (!raw) return null;
+      try {
+        const decoded = b64DecodeUnicode(raw);
+        if (!decoded) return null;
+        return JSON.parse(decoded);
+      } catch (e) {
+        console.warn("Warnverlay: invalid cfg", e);
+        return null;
+      }
+    }
+
+    const WARNVERLAY_CFG = parseWarnverlayCfg() || null;
+    // ------------------------------------------------------
+
     const CORE_KEYS = [
       "tornado warning","observed tornado warning","pds tornado warning",
       "tornado emergency","tornado watch","flash flood warning",
@@ -457,6 +481,28 @@
       SD:true, TN:true, TX:true, UT:true, VT:true,
       VA:true, WA:true, WV:true, WI:true, WY:true
     };
+    // Apply URL config before the UI is wired up
+    if (WARNVERLAY_CFG) {
+      // States: if provided, turn OFF everything except the provided list.
+      if (Array.isArray(WARNVERLAY_CFG.states) && WARNVERLAY_CFG.states.length) {
+        const wanted = new Set(WARNVERLAY_CFG.states.map(s => String(s).trim().toUpperCase()).filter(Boolean));
+        Object.keys(stateToggles).forEach(st => { stateToggles[st] = wanted.has(st); });
+      }
+      // Alerts: expect exact labels matching the menu's data-type values
+      if (Array.isArray(WARNVERLAY_CFG.alerts) && WARNVERLAY_CFG.alerts.length) {
+        selectedCategories = WARNVERLAY_CFG.alerts.map(a => String(a).trim()).filter(Boolean);
+      }
+      // Hide menu in OBS if desired
+      if (WARNVERLAY_CFG.hideMenu) {
+        document.addEventListener("DOMContentLoaded", () => {
+          const mi = document.getElementById("menu-icon");
+          const am = document.getElementById("alert-menu");
+          if (mi) mi.style.display = "none";
+          if (am) am.style.display = "none";
+        });
+      }
+    }
+
 
     // Normalize warnverlay API alert to internal format
     function normalizeWarnverlayAlert(alert) {
@@ -935,7 +981,17 @@
       });
     });
 
-    document.getElementById("menu-icon").addEventListener("click", () => {
+    
+    // Pre-select alert toggles from URL config (if provided)
+    if (WARNVERLAY_CFG && Array.isArray(WARNVERLAY_CFG.alerts) && WARNVERLAY_CFG.alerts.length) {
+      const wanted = new Set(WARNVERLAY_CFG.alerts.map(a => String(a).trim()));
+      document.querySelectorAll('.alert-toggle[data-type]').forEach(el => {
+        if (wanted.has(el.dataset.type)) {
+          el.classList.add('selected');
+        }
+      });
+    }
+document.getElementById("menu-icon").addEventListener("click", () => {
       const m = document.getElementById("alert-menu");
       m.style.display = m.style.display === "block" ? "none" : "block";
     });
@@ -961,7 +1017,8 @@
     }
 
     populateStateToggles();
-    setInterval(updateBackgroundCycle, 5000);
+    const cycleMs = (WARNVERLAY_CFG && WARNVERLAY_CFG.refreshSec ? Math.max(5, Number(WARNVERLAY_CFG.refreshSec)) * 1000 : 5000);
+    setInterval(updateBackgroundCycle, cycleMs);
     updateBackgroundCycle();
 
     // Alert count bar toggle state
