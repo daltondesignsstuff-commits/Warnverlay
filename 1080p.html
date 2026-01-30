@@ -307,7 +307,13 @@
       font-size: 1.4rem; font-weight: bold;
       white-space: nowrap;
     }
-  </style>
+  
+    /* Illinois-only build: hide UI panels (use ?test=1 to show a test button) */
+    #alert-menu, #menu-icon, #state-group, #output-url-group, .test-buttons { display: none !important; }
+    body { padding-left: 0 !important; }
+    #overlay-text, #area-text, #expire-date-container { margin-left: 0 !important; width: 100% !important; }
+    
+</style>
 </head>
 <body>
   <div id="menu-icon">
@@ -430,17 +436,7 @@
         <span class="toggle-icon">ON</span><span>Winter Weather Alerts</span>
       </div>
     </div>
-    <!-- State Filters -->
-    <div class="menu-group" id="state-group">
-      <h3>State Filters</h3>
-    </div>
-    <!-- Output URL section -->
-    <div class="menu-group" id="output-url-group" style="margin-top:20px;">
-      <h3>OBS Output URL</h3>
-      <input id="output-url" type="text" readonly style="width:100%; padding:6px; font-size:0.8rem; margin-bottom:8px;" />
-      <button id="copy-url-btn" style="width:100%; padding:6px; font-size:0.8rem;">Copy URL</button>
-    </div>
-  </div>
+</div>
 
   <div id="alert-count-bar">
     <div class="alert-count tornado">TORNADO WARNINGS: 0</div>
@@ -527,7 +523,7 @@
     async function fetchNWSAlerts() {
       try {
         const res = await fetch(
-          "https://api.weather.gov/alerts/active.atom?urgency=Past%2CFuture%2CExpected%2CImmediate"
+          "https://api.weather.gov/alerts/active.atom?urgency=Past%2CFuture%2CExpected%2CImmediate&area=IL"
         );
         const xml = await res.text();
         const doc = new DOMParser().parseFromString(xml, "application/xml");
@@ -1130,6 +1126,55 @@
 
     // ...existing code...
   </script>
+
+  <script>
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('test') !== '1') return;
+
+    function addButton(){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'TEST ALERT (IL)';
+      btn.style.position = 'fixed';
+      btn.style.right = '12px';
+      btn.style.bottom = '12px';
+      btn.style.zIndex = '999999';
+      btn.style.padding = '10px 12px';
+      btn.style.fontSize = '14px';
+      btn.style.cursor = 'pointer';
+
+      btn.addEventListener('click', function(){
+        const mock = {
+          eventType: 'Tornado Warning',
+          areaChunks: ['Jefferson County, IL; Franklin County, IL'],
+          expireDate: new Date(Date.now() + 20*60*1000).toISOString(),
+          tornadoDetection: 'OBSERVED',
+          flashFloodDamageThreat: null,
+          tornadoDamageThreatCatastrophic: false,
+          tornadoDamageThreatConsiderable: true,
+          thunderstormDamageThreatConsiderable: false,
+          thunderstormDamageThreatDestructive: false
+        };
+
+        if (typeof displayAlertsSequentially === 'function') {
+          displayAlertsSequentially([mock]);
+        } else {
+          console.warn('displayAlertsSequentially() not found; test alert not injected.');
+        }
+      });
+
+      document.body.appendChild(btn);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', addButton);
+    } else {
+      addButton();
+    }
+  })();
+  </script>
+
 </body>
 </html>
 

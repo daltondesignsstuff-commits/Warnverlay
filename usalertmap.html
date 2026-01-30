@@ -371,7 +371,11 @@
       transform: scale(1.07);
       border-color: #00ffff;
     }
-  </style>
+  
+    /* Illinois-only build: hide UI panels (use ?test=1 to show a test button) */
+    #nws-alerts-list, #menu-btn, #color-menu, #radar-settings, #alerts-filter, .alert-filter-btn { display:none !important; }
+    
+</style>
 </head>
 <body>
   <div class="warning-icon">⚠</div>
@@ -995,7 +999,7 @@ document.querySelector('.reset-colors-btn').addEventListener('click', () => {
     }
 
     // Fetch NWS alerts and add polygons to the map
-    fetch('https://api.weather.gov/alerts/active')
+    fetch('https://api.weather.gov/alerts/active/area/IL')
       .then(response => response.json())
       .then(data => {
         // Store original features globally for SOURCE extraction
@@ -1450,7 +1454,7 @@ styleSheet.insertRule(`
         }
 
         async function fetchActiveAlerts() {
-            const alertsResponse = await fetch('https://api.weather.gov/alerts/active');
+            const alertsResponse = await fetch('https://api.weather.gov/alerts/active/area/IL');
             const alertsData = await alertsResponse.json();
             return alertsData.features.map(alert => ({
                 ugcs: alert.properties.ugc,
@@ -1887,6 +1891,88 @@ styleSheet.insertRule(`
         });
     </script>
     <!-- END: Zone Watches Polygons Script -->
+
+  <script>
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('test') !== '1') return;
+
+    function addButton(){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'TEST ALERT (IL)';
+      btn.style.position = 'fixed';
+      btn.style.right = '12px';
+      btn.style.bottom = '12px';
+      btn.style.zIndex = '999999';
+      btn.style.padding = '10px 12px';
+      btn.style.fontSize = '14px';
+      btn.style.cursor = 'pointer';
+
+      btn.addEventListener('click', function(){
+        const sourceId = 'test-il-alert';
+        const fillLayerId = 'test-il-alert-fill';
+        const lineLayerId = 'test-il-alert-line';
+
+        const geojson = {
+          "type": "FeatureCollection",
+          "features": [{
+            "type": "Feature",
+            "properties": { "name": "TEST: Illinois Alert" },
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [[
+                [-91.5131, 42.5083],
+                [-87.0199, 42.5083],
+                [-87.0199, 36.9703],
+                [-91.5131, 36.9703],
+                [-91.5131, 42.5083]
+              ]]
+            }
+          }]
+        };
+
+        const addLayer = () => {
+          if (!window.map || !map.getStyle) return;
+
+          if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, { type: 'geojson', data: geojson });
+          } else {
+            map.getSource(sourceId).setData(geojson);
+          }
+
+          if (!map.getLayer(fillLayerId)) {
+            map.addLayer({
+              id: fillLayerId,
+              type: 'fill',
+              source: sourceId,
+              paint: { 'fill-opacity': 0.25 }
+            });
+          }
+
+          if (!map.getLayer(lineLayerId)) {
+            map.addLayer({
+              id: lineLayerId,
+              type: 'line',
+              source: sourceId,
+              paint: { 'line-width': 3 }
+            });
+          }
+        };
+
+        if (map && map.loaded && map.loaded()) addLayer();
+        else if (map && map.once) map.once('load', addLayer);
+        else console.warn('Map not ready; test layer not added.');
+      });
+
+      document.body.appendChild(btn);
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addButton);
+    else addButton();
+  })();
+  </script>
+
 </body>
 <!-- Add this script just before </html> -->
 <script>

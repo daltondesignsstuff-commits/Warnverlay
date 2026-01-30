@@ -242,7 +242,13 @@
       background: linear-gradient(135deg, #ff3333, #cc0000);
       box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
     }
-  </style>
+  
+    /* Illinois-only build: hide UI panels (use ?test=1 to show a test button) */
+    #alert-menu, #menu-icon, #state-group, #output-url-group, .test-buttons { display: none !important; }
+    body { padding-left: 0 !important; }
+    #overlay-text, #area-text, #expire-date-container { margin-left: 0 !important; width: 100% !important; }
+    
+</style>
 </head>
 <body>
   <div id="overlay">
@@ -269,11 +275,7 @@
         <span class="toggle-icon">ON</span><span>Flash Flood Alerts</span>
       </div>
     </div>
-    <div class="menu-group" id="state-group">
-      <h3>State Filters</h3>
-      <!-- state toggles injected here -->
-    </div>
-  </div>
+</div>
 
   <script>
     let alertQueue = [], isOverlayActive = false, initialLoad = true;
@@ -521,7 +523,7 @@
     // Fetch alerts from NWS API (weather.gov only)
     async function fetchNWSAlerts() {
       try {
-        const resp = await fetch("https://api.weather.gov/alerts/active.atom");
+        const resp = await fetch("https://api.weather.gov/alerts/active.atom?area=IL");
         const str = await resp.text();
         const parser = new DOMParser();
         const xml = parser.parseFromString(str, "application/xml");
@@ -881,18 +883,7 @@
     // --- Menu/filter data and helpers (added) ---
     let alertCategoryToggles = { tornado: true, severe: true, flashFlood: true };
 
-    let stateToggles = {
-      "AL": true, "AK": true, "AZ": true, "AR": true, "CA": true,
-      "CO": true, "CT": true, "DE": true, "FL": true, "GA": true,
-      "HI": true, "ID": true, "IL": true, "IN": true, "IA": true,
-      "KS": true, "KY": true, "LA": true, "ME": true, "MD": true,
-      "MA": true, "MI": true, "MN": true, "MS": true, "MO": true,
-      "MT": true, "NE": true, "NV": true, "NH": true, "NJ": true,
-      "NM": true, "NY": true, "NC": true, "ND": true, "OH": true,
-      "OK": true, "OR": true, "PA": true, "RI": true, "SC": true,
-      "SD": true, "TN": true, "TX": true, "UT": true, "VT": true,
-      "VA": true, "WA": true, "WV": true, "WI": true, "WY": true
-    };
+    let stateToggles = {"IL": true};
 
     function populateStateToggles() {
       const container = document.getElementById("state-group");
@@ -1267,6 +1258,62 @@
 
     pollAlerts();
   </script>
+
+  <script>
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('test') !== '1') return;
+
+    function addButton(){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'TEST ALERT (IL)';
+      btn.style.position = 'fixed';
+      btn.style.right = '12px';
+      btn.style.bottom = '12px';
+      btn.style.zIndex = '999999';
+      btn.style.padding = '10px 12px';
+      btn.style.fontSize = '14px';
+      btn.style.cursor = 'pointer';
+
+      btn.addEventListener('click', function(){
+        const opts = {
+          type: 'tornado',
+          alertKey: 'TEST-IL',
+          force: true,
+          imageSrc: 'PDS TOR.png',
+          audioSrc: 'PDS TOR.mp3',
+          eventText: 'TEST: Tornado Warning (Illinois)',
+          areaDesc: 'Jefferson County, IL; Franklin County, IL',
+          pds: false,
+          emergency: false,
+          destructive: false,
+          flashFloodConsiderable: false,
+          flashFloodCatastrophic: false,
+          state: 'IL'
+        };
+
+        if (typeof enqueueAlert === 'function') {
+          enqueueAlert(opts);
+          if (typeof processNextAlert === 'function' && typeof isOverlayActive !== 'undefined' && !isOverlayActive) {
+            processNextAlert();
+          }
+        } else {
+          console.warn('enqueueAlert() not found; test alert not injected.');
+        }
+      });
+
+      document.body.appendChild(btn);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', addButton);
+    } else {
+      addButton();
+    }
+  })();
+  </script>
+
 </body>
 </html>
 
